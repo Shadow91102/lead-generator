@@ -156,9 +156,16 @@ async def fetch_businesses(
     search = f"{query} in {location}"
     url = f"https://www.google.com/maps/search/{quote_plus(search)}/?hl=en"
 
+    # Chromium's sandbox can't run as uid 0, so disable it when we're root
+    # (common on a VPS) or when PLAYWRIGHT_NO_SANDBOX=1 is set explicitly.
+    launch_args: list[str] = []
+    is_root = sys.platform != "win32" and getattr(os, "geteuid", lambda: 1)() == 0
+    if is_root or os.environ.get("PLAYWRIGHT_NO_SANDBOX") == "1":
+        launch_args.append("--no-sandbox")
+
     businesses: list[Business] = []
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=not headful)
+        browser = await p.chromium.launch(headless=not headful, args=launch_args)
         context = await browser.new_context(
             user_agent=UA, locale="en-US", viewport={"width": 1280, "height": 900}
         )

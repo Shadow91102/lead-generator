@@ -179,9 +179,11 @@ def api_download(job_id):
 
 
 def main():
-    # HOST=0.0.0.0 to expose on a server (VPS); default stays localhost-only.
+    # HOST=0.0.0.0 to expose directly; behind nginx keep 127.0.0.1. WAITRESS=1
+    # serves via a production WSGI server instead of Flask's dev server.
     host = os.environ.get("HOST", "127.0.0.1")
     port = int(os.environ.get("PORT", "5000"))
+    prod = os.environ.get("WAITRESS") == "1"
     shown = "127.0.0.1" if host in ("0.0.0.0", "") else host
     url = f"http://{shown}:{port}"
     print("\n  " + "=" * 46)
@@ -189,14 +191,20 @@ def main():
     print(f"   Open  {url}  in your browser")
     print("   Press Ctrl+C to stop")
     print("  " + "=" * 46 + "\n")
-    # Only pop a browser on a genuine local run — never on a headless server.
-    if host in ("127.0.0.1", "localhost"):
+    # Pop a browser only for a genuine local dev run — never under a server.
+    if not prod and host in ("127.0.0.1", "localhost"):
         try:
             import webbrowser
             webbrowser.open(url)
         except Exception:
             pass
-    app.run(host=host, port=port, threaded=True)
+    if prod:
+        # waitress: one process + a thread pool, so the in-memory JOBS dict and
+        # the background scrape threads keep working (unlike multi-worker gunicorn).
+        from waitress import serve
+        serve(app, host=host, port=port, threads=8)
+    else:
+        app.run(host=host, port=port, threaded=True)
 
 
 if __name__ == "__main__":

@@ -4,4 +4,5 @@ beautifulsoup4>=4.12
 lxml>=5.0
 tldextract>=5.0
 flask>=3.0
+waitress>=3.0
 geonamescache>=2.0

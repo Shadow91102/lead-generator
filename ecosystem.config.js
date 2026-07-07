@@ -19,8 +19,9 @@ module.exports = {
     max_memory_restart: "1500M",   // Chromium is memory-hungry; restart if it leaks
 
     env: {
-      HOST: "0.0.0.0",   // expose on the VPS; use 127.0.0.1 if you put nginx in front
-      PORT: "21003"
+      HOST: "127.0.0.1",   // localhost-only: reachable ONLY through nginx in front
+      PORT: "21003",
+      WAITRESS: "1"        // production WSGI server (single process, threaded)
     }
   }]
 };
