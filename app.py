@@ -179,19 +179,24 @@ def api_download(job_id):
 
 
 def main():
+    # HOST=0.0.0.0 to expose on a server (VPS); default stays localhost-only.
+    host = os.environ.get("HOST", "127.0.0.1")
     port = int(os.environ.get("PORT", "5000"))
-    url = f"http://127.0.0.1:{port}"
+    shown = "127.0.0.1" if host in ("0.0.0.0", "") else host
+    url = f"http://{shown}:{port}"
     print("\n  " + "=" * 46)
     print("   Lead Scraper UI is running")
     print(f"   Open  {url}  in your browser")
     print("   Press Ctrl+C to stop")
     print("  " + "=" * 46 + "\n")
-    try:
-        import webbrowser
-        webbrowser.open(url)
-    except Exception:
-        pass
-    app.run(host="127.0.0.1", port=port, threaded=True)
+    # Only pop a browser on a genuine local run — never on a headless server.
+    if host in ("127.0.0.1", "localhost"):
+        try:
+            import webbrowser
+            webbrowser.open(url)
+        except Exception:
+            pass
+    app.run(host=host, port=port, threaded=True)
 
 
 if __name__ == "__main__":
