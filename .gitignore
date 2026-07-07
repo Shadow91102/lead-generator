@@ -1,0 +1,30 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# ---- Virtual environments ----
+.venv/
+venv/
+env/
+ENV/
+
+# ---- Scraped output: contains REAL contact data (emails/phones = PII). Never commit. ----
+outputs/
+*.csv
+
+# ---- Secrets / config ----
+.env
+.env.*
+*.local
+
+# ---- Editor / OS cruft ----
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

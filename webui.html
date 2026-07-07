@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lead Scraper</title>
+<style>
+  :root{
+    --bg:#f5f6f8; --card:#ffffff; --text:#161a20; --muted:#6b7280;
+    --accent:#2563eb; --accent-ink:#fff; --border:#e5e7eb; --soft:#eef1f6;
+    --ok:#16a34a; --bad:#dc2626; --chip:#eef2ff; --chip-ink:#3730a3;
+    --shadow:0 1px 3px rgba(0,0,0,.06),0 8px 24px rgba(0,0,0,.05);
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#0e1014; --card:#171a21; --text:#e6e8ec; --muted:#9aa4b2;
+      --accent:#3b82f6; --accent-ink:#fff; --border:#262b36; --soft:#1e232c;
+      --ok:#4ade80; --bad:#f87171; --chip:#1e293b; --chip-ink:#93c5fd;
+      --shadow:0 1px 3px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  .wrap{max-width:1120px;margin:0 auto;padding:28px 20px 80px}
+  header h1{margin:0 0 4px;font-size:24px;letter-spacing:-.02em}
+  header p{margin:0 0 22px;color:var(--muted)}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;
+    box-shadow:var(--shadow);padding:20px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:640px){.grid{grid-template-columns:1fr}}
+  label{display:block;font-weight:600;font-size:13px;margin:0 0 6px}
+  .hint{font-weight:400;color:var(--muted)}
+  input[type=text],input[type=number],select{width:100%;padding:10px 12px;border-radius:10px;
+    border:1px solid var(--border);background:var(--soft);color:var(--text);font-size:15px}
+  input:focus,select:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:transparent}
+  .ac{position:relative}
+  .ac-list{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:20;
+    background:var(--card);border:1px solid var(--border);border-radius:10px;
+    box-shadow:var(--shadow);max-height:264px;overflow-y:auto}
+  .ac-item{padding:9px 12px;cursor:pointer;font-size:14px;border-bottom:1px solid var(--border)}
+  .ac-item:last-child{border-bottom:0}
+  .ac-item:hover,.ac-item.on{background:var(--accent);color:var(--accent-ink)}
+  .seg{display:flex;gap:6px;background:var(--soft);border:1px solid var(--border);
+    border-radius:10px;padding:4px}
+  .seg button{flex:1;border:0;background:transparent;color:var(--text);padding:8px;border-radius:7px;
+    font-weight:600;cursor:pointer;font-size:14px}
+  .seg button.on{background:var(--accent);color:var(--accent-ink)}
+  .row{display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;margin-top:14px}
+  .row>div{flex:1;min-width:140px}
+  .adv{margin-top:12px}
+  .adv summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:600}
+  .adv .grid{margin-top:12px}
+  .check{display:flex;align-items:center;gap:8px;font-weight:500}
+  .check input{width:16px;height:16px}
+  .actions{display:flex;gap:12px;align-items:center;margin-top:18px}
+  .btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:10px;
+    padding:12px 22px;font-size:15px;font-weight:700;cursor:pointer}
+  .btn[disabled]{opacity:.55;cursor:not-allowed}
+  .btn.ghost{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+  .mt{margin-top:22px}
+  .mt8{margin-top:8px}
+  .hidden{display:none}
+  /* progress */
+  .stage{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+  .stage b{font-size:15px}
+  .badge{font-size:12px;font-weight:700;color:var(--chip-ink);background:var(--chip);
+    padding:3px 10px;border-radius:999px}
+  .bar{height:10px;background:var(--soft);border-radius:999px;overflow:hidden}
+  .bar>span{display:block;height:100%;width:0;background:var(--accent);
+    border-radius:999px;transition:width .3s ease}
+  .bar.indef>span{width:35%;animation:slide 1.1s infinite ease-in-out}
+  @keyframes slide{0%{margin-left:-35%}100%{margin-left:100%}}
+  .pmeta{display:flex;justify-content:space-between;color:var(--muted);font-size:13px;margin-top:8px}
+  /* summary chips */
+  .chips{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+  .chip{background:var(--soft);border:1px solid var(--border);border-radius:10px;
+    padding:8px 14px;font-size:14px}
+  .chip b{font-size:18px;display:block}
+  /* table */
+  .tablewrap{overflow-x:auto;border:1px solid var(--border);border-radius:12px}
+  table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:900px}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+  th{position:sticky;top:0;background:var(--card);font-size:12px;text-transform:uppercase;
+    letter-spacing:.04em;color:var(--muted)}
+  tr:last-child td{border-bottom:0}
+  td.name{font-weight:600;max-width:210px}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .socials a{display:inline-block;margin-right:6px;font-size:12px}
+  .emails a{display:block}
+  .muted{color:var(--muted)}
+  .err{color:var(--bad);font-weight:600}
+  .note{color:var(--muted);font-size:12.5px;margin-top:14px;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Lead Scraper</h1>
+    <p>Find local businesses, scrape their contact details, export a ready-to-use CSV for cold outreach.</p>
+  </header>
+
+  <!-- FORM -->
+  <div class="card" id="formCard">
+    <div class="grid">
+      <div>
+        <label>Business type <span class="hint">— what to search for</span></label>
+        <select id="querySel"></select>
+        <input type="text" id="queryCustom" class="hidden mt8"
+               placeholder="Type a business type, e.g. wedding photographer" autocomplete="off">
+      </div>
+      <div>
+        <label>Location <span class="hint">— type to search worldwide</span></label>
+        <div class="ac">
+          <input type="text" id="locationInput" placeholder="Start typing a city, e.g. Austin" autocomplete="off">
+          <div class="ac-list hidden" id="locSuggest"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label>Number of leads</label>
+        <input type="number" id="limit" value="50" min="1" max="300">
+      </div>
+      <div>
+        <label>Source</label>
+        <div class="seg" id="sourceSeg">
+          <button type="button" data-src="gmaps" class="on">Google Maps</button>
+          <button type="button" data-src="osm">OpenStreetMap</button>
+        </div>
+      </div>
+    </div>
+
+    <details class="adv">
+      <summary>Advanced options</summary>
+      <div class="grid">
+        <div>
+          <label>Parallel website fetches</label>
+          <input type="number" id="concurrency" value="10" min="1" max="30">
+        </div>
+        <div style="display:flex;align-items:flex-end">
+          <label class="check"><input type="checkbox" id="noScrape">
+            Skip website scraping (faster, but no emails)</label>
+        </div>
+      </div>
+    </details>
+
+    <div class="actions">
+      <button class="btn" id="runBtn">Find leads</button>
+      <span id="formMsg" class="err"></span>
+    </div>
+    <div class="note" id="srcNote"></div>
+  </div>
+
+  <!-- PROGRESS -->
+  <div class="card mt hidden" id="progCard">
+    <div class="stage">
+      <b id="stageMsg">Starting…</b>
+      <span class="badge" id="stageBadge">FIND</span>
+    </div>
+    <div class="bar indef" id="bar"><span></span></div>
+    <div class="pmeta"><span id="progCount"></span><span id="elapsed">0s</span></div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="card mt hidden" id="resultCard">
+    <div class="chips" id="chips"></div>
+    <div style="margin-bottom:14px">
+      <a class="btn" id="dlBtn" href="#">Download CSV</a>
+    </div>
+    <div class="tablewrap"><table id="tbl">
+      <thead><tr>
+        <th>Name</th><th>Category</th><th>Phone</th><th>Email(s)</th>
+        <th>Website</th><th>Socials</th><th>Rating</th><th>Reviews</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <div class="note" id="emptyNote"></div>
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+let source = "gmaps", pollTimer = null, startTs = 0, elapsedTimer = null;
+
+// ---- dropdown data (pick from the list, or choose "Other" to type any) ----
+const NICHES = [
+  ["Health & Medical", ["Dentist","Doctor","Dermatologist","Chiropractor","Optician","Veterinarian","Physical therapist","Pharmacy"]],
+  ["Food & Drink", ["Restaurant","Cafe","Coffee shop","Bar","Bakery","Catering service"]],
+  ["Home & Trades", ["Plumber","Electrician","HVAC contractor","Roofing contractor","Landscaping","Cleaning service","Locksmith","Pest control"]],
+  ["Professional Services", ["Real estate agency","Law firm","Accountant","Marketing agency","Insurance agency","Architect","Financial advisor"]],
+  ["Beauty & Fitness", ["Gym","Fitness center","Hair salon","Barber shop","Nail salon","Spa","Yoga studio","Tattoo studio"]],
+  ["Retail", ["Florist","Jewelry store","Clothing boutique","Furniture store","Pet store","Bike shop"]],
+  ["Automotive", ["Car dealership","Auto repair shop","Car wash"]],
+  ["Solo Workers — Trades & Repair", ["Handyman","Appliance repair","Mobile mechanic","Computer repair","Phone repair","TV repair","Garage door repair","Furniture repair","Painter","Carpenter","Tile installer","Flooring installer","Window cleaning","Pressure washing","Pool cleaning service","Chimney sweep","Gutter cleaning"]],
+  ["Solo Workers — Personal & Creative", ["Private tutor","Music teacher","Personal trainer","Yoga instructor","Massage therapist","Life coach","Nutritionist","Mobile pet grooming","Dog trainer","Dog walker","Photographer","Videographer","Mobile DJ","Event planner","Makeup artist","Mobile notary","Bookkeeper","Freelance graphic designer","Freelance web designer","Translator"]],
+];
+function fillSelect(sel, groups, placeholder){
+  sel.innerHTML = `<option value="" disabled selected>${placeholder}</option>`;
+  for(const [label, items] of groups){
+    const og = document.createElement("optgroup"); og.label = label;
+    for(const it of items){
+      const o = document.createElement("option"); o.value = it; o.textContent = it; og.appendChild(o);
+    }
+    sel.appendChild(og);
+  }
+  const other = document.createElement("option");
+  other.value = "__other__"; other.textContent = "✏️  Other — type your own…";
+  sel.appendChild(other);
+}
+fillSelect($("#querySel"), NICHES, "Select a business type…");
+
+function wireOther(sel, custom){
+  sel.addEventListener("change", ()=>{
+    const on = sel.value === "__other__";
+    custom.classList.toggle("hidden", !on);
+    if(on) custom.focus();
+  });
+  custom.addEventListener("keydown", e => { if(e.key === "Enter") run(); });
+}
+wireOther($("#querySel"), $("#queryCustom"));
+
+function fieldValue(sel, custom){
+  return sel.value === "__other__" ? custom.value.trim() : (sel.value || "");
+}
+
+// ---- Location type-ahead search (offline, powered by /api/places) ----
+const locInput = $("#locationInput"), locList = $("#locSuggest");
+let acItems = [], acActive = -1, acTimer = null;
+
+locInput.addEventListener("input", ()=>{
+  clearTimeout(acTimer);
+  const q = locInput.value.trim();
+  if(q.length < 2){ hideAc(); return; }
+  acTimer = setTimeout(()=>fetchPlaces(q), 220);
+});
+async function fetchPlaces(q){
+  let res;
+  try{ res = await (await fetch("/api/places?q=" + encodeURIComponent(q))).json(); }
+  catch(_){ return; }
+  if(locInput.value.trim().length < 2){ return hideAc(); }
+  acItems = res || []; acActive = -1;
+  if(!acItems.length){ return hideAc(); }
+  locList.innerHTML = acItems.map((r,i)=>`<div class="ac-item" data-i="${i}">${esc(r.label)}</div>`).join("");
+  locList.classList.remove("hidden");
+}
+locList.addEventListener("mousedown", e=>{           // mousedown fires before blur
+  const it = e.target.closest(".ac-item"); if(!it) return;
+  e.preventDefault(); pickAc(+it.dataset.i);
+});
+function pickAc(i){ if(acItems[i]){ locInput.value = acItems[i].value; } hideAc(); }
+function hideAc(){ locList.classList.add("hidden"); acItems = []; acActive = -1; }
+function hiAc(){ [...locList.children].forEach((c,i)=>c.classList.toggle("on", i===acActive)); }
+locInput.addEventListener("keydown", e=>{
+  if(locList.classList.contains("hidden")){ if(e.key==="Enter") run(); return; }
+  if(e.key==="ArrowDown"){ e.preventDefault(); acActive=Math.min(acActive+1, acItems.length-1); hiAc(); }
+  else if(e.key==="ArrowUp"){ e.preventDefault(); acActive=Math.max(acActive-1, 0); hiAc(); }
+  else if(e.key==="Enter"){ e.preventDefault(); if(acActive>=0){ pickAc(acActive); } else { hideAc(); run(); } }
+  else if(e.key==="Escape"){ hideAc(); }
+});
+locInput.addEventListener("blur", ()=> setTimeout(hideAc, 150));
+
+const NOTES = {
+  gmaps: "Google Maps: denser results with ratings & review counts. It opens each listing to read the website, so it's slower and is against Google's ToS for automation — use at low volume for your own outreach.",
+  osm:   "OpenStreetMap: fully free & ToS-clean, no browser. Fewer businesses list a website, so expect fewer emails. Great for a quick, compliant first pass."
+};
+function setNote(){ $("#srcNote").textContent = NOTES[source]; }
+setNote();
+
+$("#sourceSeg").addEventListener("click", e => {
+  const b = e.target.closest("button[data-src]"); if(!b) return;
+  source = b.dataset.src;
+  [...$("#sourceSeg").children].forEach(x => x.classList.toggle("on", x===b));
+  setNote();
+});
+
+$("#runBtn").addEventListener("click", run);
+
+function esc(s){ return (s||"").replace(/[&<>"]/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c])); }
+function host(u){ try{ return new URL(u).host.replace(/^www\./,""); }catch(_){ return u; } }
+
+async function run(){
+  const query = fieldValue($("#querySel"), $("#queryCustom"));
+  const location = locInput.value.trim();
+  $("#formMsg").textContent = "";
+  if(!query || !location){
+    $("#formMsg").textContent = "Pick a business type and type a location.";
+    return;
+  }
+
+  const body = {
+    query, location,
+    limit: +$("#limit").value || 50,
+    source,
+    concurrency: +$("#concurrency").value || 10,
+    no_website_scrape: $("#noScrape").checked
+  };
+  $("#runBtn").disabled = true; $("#runBtn").textContent = "Working…";
+  $("#resultCard").classList.add("hidden");
+  $("#progCard").classList.remove("hidden");
+  setProgress("find", 0, 0, "Starting…");
+  startTs = Date.now();
+  clearInterval(elapsedTimer);
+  elapsedTimer = setInterval(()=>{ $("#elapsed").textContent = Math.round((Date.now()-startTs)/1000)+"s"; }, 500);
+
+  let res;
+  try{
+    res = await fetch("/api/run", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)});
+  }catch(_){ return fail("Could not reach the server."); }
+  const data = await res.json();
+  if(!res.ok){ return fail(data.error || "Request failed."); }
+  poll(data.job_id);
+}
+
+function poll(jobId){
+  clearInterval(pollTimer);
+  pollTimer = setInterval(async ()=>{
+    let job;
+    try{ job = await (await fetch("/api/status/"+jobId)).json(); }
+    catch(_){ return; }
+    if(job.error && job.status==="error"){ clearInterval(pollTimer); return fail(job.error); }
+    setProgress(job.stage, job.done, job.total, job.message);
+    if(job.status==="done"){ clearInterval(pollTimer); clearInterval(elapsedTimer); finish(jobId, job); }
+  }, 900);
+}
+
+function setProgress(stage, done, total, message){
+  $("#stageMsg").textContent = message || "Working…";
+  $("#stageBadge").textContent = stage==="scrape" ? "SCRAPE SITES" : (stage==="done" ? "DONE" : "FIND");
+  const bar = $("#bar"), fill = bar.firstElementChild;
+  if(total>0){ bar.classList.remove("indef"); fill.style.width = Math.round(done/total*100)+"%";
+    $("#progCount").textContent = done+" / "+total; }
+  else { bar.classList.add("indef"); fill.style.width=""; $("#progCount").textContent=""; }
+}
+
+function finish(jobId, job){
+  $("#runBtn").disabled=false; $("#runBtn").textContent="Find leads";
+  $("#progCard").classList.add("hidden");
+  $("#resultCard").classList.remove("hidden");
+  const leads = job.leads || [];
+  $("#chips").innerHTML =
+    chip(job.count, "leads") + chip(job.with_site||0, "with website") + chip(job.with_email||0, "with email");
+  $("#dlBtn").href = "/api/download/"+jobId;
+  const tb = $("#tbl").querySelector("tbody"); tb.innerHTML="";
+  for(const l of leads) tb.appendChild(rowEl(l));
+  $("#emptyNote").textContent = leads.length ? "" :
+    "No businesses found. Try a broader business type, a different location, or the other source.";
+}
+
+function chip(n, label){ return `<div class="chip"><b>${n}</b>${label}</div>`; }
+
+function socialLinks(l){
+  const nets = {instagram:"IG", facebook:"FB", linkedin:"LI", tiktok:"TT", youtube:"YT"};
+  return Object.entries(nets).filter(([k])=>l[k]).map(([k,lbl])=>
+    `<a href="${esc(l[k])}" target="_blank" rel="noopener" title="${k}">${lbl}</a>`).join("") || '<span class="muted">—</span>';
+}
+function emailCell(l){
+  const em = l.emails || [];
+  if(!em.length) return '<span class="muted">—</span>';
+  return em.map(e=>`<a href="mailto:${esc(e)}">${esc(e)}</a>`).join("");
+}
+function rowEl(l){
+  const tr=document.createElement("tr");
+  tr.innerHTML =
+    `<td class="name">${esc(l.name)}</td>`+
+    `<td>${esc(l.category)||'<span class="muted">—</span>'}</td>`+
+    `<td>${esc(l.phone)||'<span class="muted">—</span>'}</td>`+
+    `<td class="emails">${emailCell(l)}</td>`+
+    `<td>${l.website?`<a href="${esc(l.website)}" target="_blank" rel="noopener">${esc(host(l.website))}</a>`:'<span class="muted">—</span>'}</td>`+
+    `<td class="socials">${socialLinks(l)}</td>`+
+    `<td>${esc(l.rating)||'<span class="muted">—</span>'}</td>`+
+    `<td>${esc(l.reviews)||'<span class="muted">—</span>'}</td>`;
+  return tr;
+}
+
+function fail(msg){
+  clearInterval(pollTimer); clearInterval(elapsedTimer);
+  $("#runBtn").disabled=false; $("#runBtn").textContent="Find leads";
+  $("#progCard").classList.add("hidden");
+  $("#formMsg").textContent = msg;
+}
+</script>
+</body>
+</html>
