@@ -171,15 +171,27 @@ async def fetch_businesses(
         )
         page = await context.new_page()
         try:
-            await page.goto(url, wait_until="domcontentloaded", timeout=45000)
+            # "commit" returns as soon as Google responds. Maps keeps streaming
+            # content for a long time, so waiting for domcontentloaded/load can
+            # exceed the timeout and hang; we wait for the results feed instead.
+            await page.goto(url, wait_until="commit", timeout=45000)
             await _dismiss_consent(page)
 
             try:
-                await page.wait_for_selector('div[role="feed"]', timeout=20000)
+                await page.wait_for_selector('div[role="feed"]', timeout=30000)
             except Exception:
-                print("[gmaps] Results feed did not appear -- Google may have "
-                      "served a different layout or a CAPTCHA. Try --headful to "
-                      "inspect, or use --source osm.")
+                # Save what Google actually served so a consent wall / CAPTCHA
+                # (common from datacenter/VPS IPs) is easy to tell from a real
+                # timeout. Goes to stderr so it shows up in the pm2 logs.
+                try:
+                    shot = os.path.join(os.getcwd(), "gmaps_debug.png")
+                    await page.screenshot(path=shot, full_page=True)
+                    print(f"[gmaps] wrote debug screenshot: {shot}", file=sys.stderr)
+                except Exception:
+                    pass
+                print("[gmaps] Results feed never appeared -- Google likely served "
+                      "a consent wall or CAPTCHA, which is common from a datacenter/"
+                      "VPS IP. Use --source osm on servers.", file=sys.stderr)
                 return []
 
             print("__PROG__ search 0 0", file=sys.stderr, flush=True)
