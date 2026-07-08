@@ -44,6 +44,7 @@ def run(args: argparse.Namespace) -> int:
     businesses = generate_leads(
         args.query, args.location, args.limit, args.source,
         args.concurrency, args.no_website_scrape, args.headful,
+        skip_known=args.skip_known,
         on_progress=_console_progress,
     )
     print()
@@ -76,6 +77,8 @@ def main() -> None:
                     help="Parallel website fetches (default 10)")
     ap.add_argument("--no-website-scrape", action="store_true",
                     help="Skip stage 2 (source data only, no email mining)")
+    ap.add_argument("--skip-known", action="store_true",
+                    help="Drop leads already saved for this source in a past run")
     ap.add_argument("--headful", action="store_true",
                     help="gmaps only: show the browser window (debugging)")
     args = ap.parse_args()

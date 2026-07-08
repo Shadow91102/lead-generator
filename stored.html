@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Saved leads &middot; Lead Scraper</title>
+<style>
+  :root { color-scheme: dark; } * { box-sizing: border-box; }
+  body { margin:0; background:#0f1115; color:#e6e8ec;
+         font:14px/1.5 system-ui,Segoe UI,Roboto,sans-serif; }
+  .wrap { max-width:1100px; margin:0 auto; padding:28px 20px 60px; }
+  a { color:#3b82f6; text-decoration:none; } a:hover { text-decoration:underline; }
+  h1 { margin:0 0 2px; font-size:22px; }
+  .top { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+  .muted { color:#9aa3b2; font-size:13px; }
+  .bar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:18px 0; }
+  .seg button, .btn {
+    background:#171a21; color:#e6e8ec; border:1px solid #262b36; border-radius:9px;
+    padding:8px 12px; font-size:13px; cursor:pointer; }
+  .seg button.on { background:#3b82f6; border-color:#3b82f6; color:#fff; }
+  .btn { margin-left:auto; }
+  .tablewrap { overflow-x:auto; border:1px solid #222835; border-radius:12px; }
+  table { border-collapse:collapse; width:100%; min-width:820px; }
+  th, td { text-align:left; padding:9px 12px; border-bottom:1px solid #1c2230; vertical-align:top; }
+  th { position:sticky; top:0; background:#141821; font-size:12px; color:#9aa3b2; }
+  tr:last-child td { border-bottom:0; }
+  .src { font-size:11px; padding:2px 7px; border-radius:20px; background:#1f2530; color:#c3cad6; }
+  .empty { padding:40px; text-align:center; color:#9aa3b2; }
+  .em { color:#9aa3b2; }
+</style></head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div>
+      <h1>Saved leads</h1>
+      <div class="muted" id="summary">Loading…</div>
+    </div>
+    <div class="muted"><a href="/">&lsaquo; Back to scraper</a></div>
+  </div>
+
+  <div class="bar">
+    <div class="seg" id="seg">
+      <button data-src="" class="on">All</button>
+      <button data-src="gmaps">Google Maps</button>
+      <button data-src="osm">OpenStreetMap</button>
+    </div>
+    <a class="btn" id="exportBtn" href="/api/stored.csv">Download CSV</a>
+  </div>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr>
+        <th>Name</th><th>Category</th><th>Phone</th><th>Email(s)</th>
+        <th>Website</th><th>Source</th><th>First seen</th>
+      </tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+  <div class="empty" id="empty" style="display:none">No saved leads yet for this source.</div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+let source = "";
+
+function esc(s){ return (s==null?"":String(s)).replace(/[&<>"]/g, c =>
+  ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c])); }
+function host(u){ try{ return new URL(u).host.replace(/^www\./,""); }catch(_){ return u||""; } }
+
+async function load(){
+  let res;
+  try{ res = await fetch("/api/stored" + (source ? "?source="+source : "")); }
+  catch(_){ $("#summary").textContent = "Could not reach the server."; return; }
+  if(res.status === 401){ location.href = "/login"; return; }
+  const data = await res.json();
+  const c = data.counts || {};
+  $("#summary").textContent =
+    `${c.total||0} total  ·  ${c.gmaps||0} Google Maps  ·  ${c.osm||0} OpenStreetMap`;
+
+  const leads = data.leads || [];
+  const tb = $("#rows"); tb.innerHTML = "";
+  $("#empty").style.display = leads.length ? "none" : "block";
+  for(const b of leads){
+    const emails = (b.emails||[]).join(", ");
+    const site = b.website ? `<a href="${esc(b.website)}" target="_blank" rel="noopener">${esc(host(b.website))}</a>` : `<span class="em">—</span>`;
+    const seen = (b.first_seen||"").replace("T"," ").slice(0,16);
+    const tr = document.createElement("tr");
+    tr.innerHTML =
+      `<td>${esc(b.name)||'<span class="em">—</span>'}</td>`+
+      `<td>${esc(b.category)||'<span class="em">—</span>'}</td>`+
+      `<td>${esc(b.phone)||'<span class="em">—</span>'}</td>`+
+      `<td>${esc(emails)||'<span class="em">—</span>'}</td>`+
+      `<td>${site}</td>`+
+      `<td><span class="src">${esc(b.source)}</span></td>`+
+      `<td class="muted">${esc(seen)}</td>`;
+    tb.appendChild(tr);
+  }
+}
+
+$("#seg").addEventListener("click", e => {
+  const btn = e.target.closest("button"); if(!btn) return;
+  source = btn.dataset.src;
+  [...$("#seg").children].forEach(b => b.classList.toggle("on", b===btn));
+  $("#exportBtn").href = "/api/stored.csv" + (source ? "?source="+source : "");
+  load();
+});
+
+load();
+</script>
+</body></html>

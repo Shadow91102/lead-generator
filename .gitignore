@@ -14,9 +14,11 @@ venv/
 env/
 ENV/
 
-# ---- Scraped output: contains REAL contact data (emails/phones = PII). Never commit. ----
+# ---- Scraped output + lead DB: contains REAL contact data (emails/phones = PII). Never commit. ----
 outputs/
 *.csv
+leads.db
+*.db
 
 # ---- Secrets / config ----
 .env

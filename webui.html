@@ -100,6 +100,7 @@
   <header>
     <h1>Lead Scraper</h1>
     <p>Find local businesses, scrape their contact details, export a ready-to-use CSV for cold outreach.</p>
+    <p style="margin-top:8px"><a href="/stored">&#128193; View saved leads &rsaquo;</a></p>
   </header>
 
   <!-- FORM -->
@@ -144,6 +145,10 @@
         <div style="display:flex;align-items:flex-end">
           <label class="check"><input type="checkbox" id="noScrape">
             Skip website scraping (faster, but no emails)</label>
+        </div>
+        <div style="display:flex;align-items:flex-end">
+          <label class="check"><input type="checkbox" id="skipKnown">
+            Skip leads already saved for this source</label>
         </div>
       </div>
     </details>
@@ -296,7 +301,8 @@ async function run(){
     limit: +$("#limit").value || 50,
     source,
     concurrency: +$("#concurrency").value || 10,
-    no_website_scrape: $("#noScrape").checked
+    no_website_scrape: $("#noScrape").checked,
+    skip_known: $("#skipKnown").checked
   };
   $("#runBtn").disabled = true; $("#runBtn").textContent = "Working…";
   $("#resultCard").classList.add("hidden");

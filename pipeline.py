@@ -130,8 +130,14 @@ async def enrich_from_websites(businesses: list[Business], concurrency: int,
 
 def generate_leads(query: str, location: str, limit: int, source: str = "gmaps",
                    concurrency: int = 10, no_website_scrape: bool = False,
-                   headful: bool = False, on_progress=_noop) -> list[Business]:
-    """Full pipeline: find businesses -> scrape their websites -> return leads."""
+                   headful: bool = False, skip_known: bool = False,
+                   on_progress=_noop) -> list[Business]:
+    """Full pipeline: find businesses -> scrape their websites -> return leads.
+
+    When skip_known is set, leads already stored for this source in a previous
+    run are dropped *before* the website-scrape stage (so we don't waste time
+    re-scraping them). Every run's leads are recorded so future runs can skip.
+    """
     if source == "gmaps":
         businesses = fetch_gmaps(query, location, limit, headful, on_progress)
     else:
@@ -141,8 +147,27 @@ def generate_leads(query: str, location: str, limit: int, source: str = "gmaps",
 
     businesses = dedupe(businesses)
 
+    if skip_known:
+        try:
+            import store
+            known = store.known_keys(source)
+            kept = [b for b in businesses if store.lead_key(b) not in known]
+            skipped = len(businesses) - len(kept)
+            businesses = kept
+            on_progress("find", len(businesses), len(businesses),
+                        f"Skipped {skipped} already-saved {source} lead(s)")
+        except Exception as e:  # never let the store break a scrape
+            print(f"[store] skip-known failed: {e}", file=sys.stderr)
+
     if not no_website_scrape:
         asyncio.run(enrich_from_websites(businesses, concurrency, on_progress))
+
+    # Record this run's leads so future runs can skip them.
+    try:
+        import store
+        store.save_leads(businesses, source)
+    except Exception as e:
+        print(f"[store] save failed: {e}", file=sys.stderr)
 
     on_progress("done", len(businesses), len(businesses), "Done")
     return businesses

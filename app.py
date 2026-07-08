@@ -239,6 +239,31 @@ def index():
     return html.replace("<!--LOGOUT-->", link)
 
 
+@app.get("/stored")
+def stored_page():
+    return send_file(os.path.join(HERE, "stored.html"))
+
+
+@app.get("/api/stored")
+def api_stored():
+    src = request.args.get("source")
+    src = src if src in ("gmaps", "osm") else None
+    import store
+    return jsonify({"counts": store.counts(), "leads": store.all_leads(src)})
+
+
+@app.get("/api/stored.csv")
+def api_stored_csv():
+    src = request.args.get("source")
+    src = src if src in ("gmaps", "osm") else None
+    import store
+    rows = store.all_business(src)
+    fname = f"stored_leads_{src or 'all'}.csv"
+    path = os.path.join(OUT_DIR, fname)
+    write_csv(rows, path)
+    return send_file(path, as_attachment=True, download_name=fname)
+
+
 @app.post("/api/run")
 def api_run():
     wait = _rate_retry_after("run", RUN_LIMIT, RUN_WINDOW)
@@ -267,6 +292,7 @@ def api_run():
     except (TypeError, ValueError):
         concurrency = 10
     no_scrape = bool(data.get("no_website_scrape"))
+    skip_known = bool(data.get("skip_known"))
 
     job_id = uuid.uuid4().hex[:12]
     JOBS[job_id] = {
@@ -277,14 +303,14 @@ def api_run():
     }
     t = threading.Thread(
         target=_run_job,
-        args=(job_id, query, location, limit, source, concurrency, no_scrape),
+        args=(job_id, query, location, limit, source, concurrency, no_scrape, skip_known),
         daemon=True,
     )
     t.start()
     return jsonify({"job_id": job_id})
 
 
-def _run_job(job_id, query, location, limit, source, concurrency, no_scrape):
+def _run_job(job_id, query, location, limit, source, concurrency, no_scrape, skip_known):
     job = JOBS[job_id]
 
     def on_progress(stage, done, total, message):
@@ -293,7 +319,7 @@ def _run_job(job_id, query, location, limit, source, concurrency, no_scrape):
     try:
         businesses = pipeline.generate_leads(
             query, location, limit, source, concurrency, no_scrape,
-            headful=False, on_progress=on_progress,
+            headful=False, skip_known=skip_known, on_progress=on_progress,
         )
         csv_name = _safe_name("leads", query, location) + ".csv"
         csv_path = os.path.join(OUT_DIR, f"{job_id}_{csv_name}")
