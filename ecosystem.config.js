@@ -21,7 +21,16 @@ module.exports = {
     env: {
       HOST: "127.0.0.1",   // localhost-only: reachable ONLY through nginx in front
       PORT: "21003",
-      WAITRESS: "1"        // production WSGI server (single process, threaded)
+      WAITRESS: "1",       // production WSGI server (single process, threaded)
+
+      // App login. Keep secrets OUT of git: export them in your shell before
+      //   pm2 start ecosystem.config.js --update-env
+      // and they get picked up here.
+      //   export APP_PASSWORD='choose-a-strong-one'
+      //   export SECRET_KEY="$(python3 -c 'import secrets; print(secrets.token_hex(32))')"
+      APP_USERNAME: process.env.APP_USERNAME || "admin",
+      APP_PASSWORD: process.env.APP_PASSWORD || "",
+      SECRET_KEY:   process.env.SECRET_KEY   || ""
     }
   }]
 };
